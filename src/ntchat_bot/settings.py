@@ -26,3 +26,7 @@ WECHAT_CONTACT_REPLY_ENABLED = config.get("WECHAT_CONTACT_REPLY_ENABLED", "true"
 MESSAGE_SAVE_ENABLED = config.get("MESSAGE_SAVE_ENABLED", "true").lower() == "true"
 CONTACT_SYNC_ENABLED = config.get("CONTACT_SYNC_ENABLED", "true").lower() == "true"
 CHATROOM_SYNC_ENABLED = config.get("CHATROOM_SYNC_ENABLED", "true").lower() == "true"
+
+DEBUG_MODE = config.get("DEBUG_MODE", "false").lower() == "true"
+
+TEST_GROUP_ID = config.get("TEST_GROUP_ID", "")

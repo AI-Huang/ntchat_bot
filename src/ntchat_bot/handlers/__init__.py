@@ -8,7 +8,7 @@ from .media_handler import (
     on_recv_video_msg,
     on_recv_voice_msg,
 )
-from .room_handler import on_room_add_member, on_room_del_member
+from .room_handler import on_room_add_member, on_room_del_member, on_room_member_list
 from .system_handler import (
     on_recv_friend_request,
     on_recv_revoke_msg,

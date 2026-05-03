@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import sys
+import time
 
 import ntchat
 from ntchat.const import notify_type
@@ -18,9 +19,16 @@ from src.ntchat_bot.handlers import (
     on_recv_voice_msg,
     on_room_add_member,
     on_room_del_member,
+    on_room_member_list,
     on_user_login,
     on_user_logout,
 )
+from src.ntchat_bot.logger import get_logger
+from src.ntchat_bot.registry import fetch_group_members_on_login
+from src.ntchat_bot.settings import DEBUG_MODE
+
+# 获取日志记录器
+logger = get_logger(__name__)
 
 wechat = ntchat.WeChat()
 wechat.open(smart=False)
@@ -42,9 +50,25 @@ wechat.msg_register(notify_type.MT_RECV_REVOKE_MSG)(on_recv_revoke_msg)
 wechat.msg_register(notify_type.MT_USER_LOGIN_MSG)(on_user_login)
 wechat.msg_register(notify_type.MT_USER_LOGOUT_MSG)(on_user_logout)
 
+# 注册群成员列表事件
+wechat.msg_register(11032)(on_room_member_list)
+
 try:
+    # 等待登录成功
+    print("等待微信登录...")
     while True:
-        pass
+        status = wechat.login_status
+        if status:
+            logger.info("微信登录成功")
+            break
+        time.sleep(1)
+    
+    # 仅在 DEBUG_MODE=True 时主动获取群成员列表
+    if DEBUG_MODE:
+        fetch_group_members_on_login(wechat)
+    
+    while True:
+        time.sleep(1)
 except KeyboardInterrupt:
     ntchat.exit_()
     sys.exit()

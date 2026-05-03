@@ -28,7 +28,7 @@ class SQLiteService:
     
     def _connect(self):
         if self.conn is None:
-            self.conn = sqlite3.connect(self.db_path)
+            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
             self.conn.row_factory = sqlite3.Row
     
     def _close(self):
@@ -47,7 +47,7 @@ class SQLiteService:
                     msg_id TEXT UNIQUE,
                     from_wxid TEXT,
                     to_wxid TEXT,
-                    roomid TEXT,
+                    room_wxid TEXT,
                     content TEXT,
                     msg_type INTEGER,
                     is_group INTEGER DEFAULT 0,
@@ -68,8 +68,8 @@ class SQLiteService:
             ''')
             
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS chatrooms (
-                    roomid TEXT PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS groups (
+                    group_wxid TEXT PRIMARY KEY,
                     name TEXT,
                     member_count INTEGER DEFAULT 0,
                     create_time TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -78,11 +78,19 @@ class SQLiteService:
             ''')
             
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS room_members (
-                    roomid TEXT,
+                CREATE TABLE IF NOT EXISTS group_members (
+                    group_wxid TEXT,
                     wxid TEXT,
+                    account TEXT,
                     nickname TEXT,
-                    PRIMARY KEY (roomid, wxid)
+                    display_name TEXT,
+                    avatar TEXT,
+                    city TEXT,
+                    province TEXT,
+                    country TEXT,
+                    remark TEXT,
+                    sex INTEGER,
+                    PRIMARY KEY (group_wxid, wxid)
                 )
             ''')
             
@@ -132,14 +140,14 @@ class SQLiteService:
             self._close()
     
     def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, content: str, 
-                       msg_type: int, roomid: str = None, extra: str = None):
+                       msg_type: int, room_wxid: str = None, extra: str = None):
         sql = '''
             INSERT OR REPLACE INTO messages 
-            (msg_id, from_wxid, to_wxid, roomid, content, msg_type, is_group, extra)
+            (msg_id, from_wxid, to_wxid, room_wxid, content, msg_type, is_group, extra)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        is_group = 1 if roomid else 0
-        self.execute(sql, (msg_id, from_wxid, to_wxid, roomid, content, msg_type, is_group, extra))
+        is_group = 1 if room_wxid else 0
+        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, msg_type, is_group, extra))
     
     def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None):
         sql = '''
@@ -149,24 +157,28 @@ class SQLiteService:
         '''
         self.execute(sql, (wxid, nickname, remark, avatar, datetime.now().isoformat()))
     
-    def insert_chatroom(self, roomid: str, name: str = None, member_count: int = 0):
+    def insert_chatroom(self, group_wxid: str, name: str = None, member_count: int = 0):
         sql = '''
-            INSERT OR REPLACE INTO chatrooms 
-            (roomid, name, member_count, update_time)
+            INSERT OR REPLACE INTO groups 
+            (group_wxid, name, member_count, update_time)
             VALUES (?, ?, ?, ?)
         '''
-        self.execute(sql, (roomid, name, member_count, datetime.now().isoformat()))
+        self.execute(sql, (group_wxid, name, member_count, datetime.now().isoformat()))
     
-    def insert_room_member(self, roomid: str, wxid: str, nickname: str = None):
+    def insert_room_member(self, group_wxid: str, wxid: str, nickname: str = None, 
+                          account: str = None, display_name: str = None, 
+                          avatar: str = None, city: str = None, province: str = None, 
+                          country: str = None, remark: str = None, sex: int = None):
         sql = '''
-            INSERT OR REPLACE INTO room_members (roomid, wxid, nickname)
-            VALUES (?, ?, ?)
+            INSERT OR REPLACE INTO group_members 
+            (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        self.execute(sql, (roomid, wxid, nickname))
+        self.execute(sql, (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex))
     
-    def delete_room_member(self, roomid: str, wxid: str):
-        sql = 'DELETE FROM room_members WHERE roomid = ? AND wxid = ?'
-        self.execute(sql, (roomid, wxid))
+    def delete_room_member(self, group_wxid: str, wxid: str):
+        sql = 'DELETE FROM group_members WHERE group_wxid = ? AND wxid = ?'
+        self.execute(sql, (group_wxid, wxid))
     
     def insert_system_event(self, event_type: str, data: str):
         sql = 'INSERT INTO system_events (event_type, data) VALUES (?, ?)'
@@ -180,9 +192,9 @@ class SQLiteService:
         sql = 'SELECT * FROM messages WHERE from_wxid = ? ORDER BY create_time DESC LIMIT ?'
         return self.fetch_all(sql, (wxid, limit))
     
-    def get_messages_by_roomid(self, roomid: str, limit: int = 100) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM messages WHERE roomid = ? ORDER BY create_time DESC LIMIT ?'
-        return self.fetch_all(sql, (roomid, limit))
+    def get_messages_by_room_wxid(self, room_wxid: str, limit: int = 100) -> List[Dict[str, Any]]:
+        sql = 'SELECT * FROM messages WHERE room_wxid = ? ORDER BY create_time DESC LIMIT ?'
+        return self.fetch_all(sql, (room_wxid, limit))
     
     def get_contact(self, wxid: str) -> Optional[Dict[str, Any]]:
         sql = 'SELECT * FROM contacts WHERE wxid = ?'
@@ -192,17 +204,17 @@ class SQLiteService:
         sql = 'SELECT * FROM contacts ORDER BY update_time DESC'
         return self.fetch_all(sql)
     
-    def get_chatroom(self, roomid: str) -> Optional[Dict[str, Any]]:
-        sql = 'SELECT * FROM chatrooms WHERE roomid = ?'
-        return self.fetch_one(sql, (roomid,))
+    def get_chatroom(self, group_wxid: str) -> Optional[Dict[str, Any]]:
+        sql = 'SELECT * FROM groups WHERE group_wxid = ?'
+        return self.fetch_one(sql, (group_wxid,))
     
-    def get_all_chatrooms(self) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM chatrooms ORDER BY update_time DESC'
+    def get_all_groups(self) -> List[Dict[str, Any]]:
+        sql = 'SELECT * FROM groups ORDER BY update_time DESC'
         return self.fetch_all(sql)
     
-    def get_room_members(self, roomid: str) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM room_members WHERE roomid = ?'
-        return self.fetch_all(sql, (roomid,))
+    def get_group_members(self, group_wxid: str) -> List[Dict[str, Any]]:
+        sql = 'SELECT * FROM group_members WHERE group_wxid = ?'
+        return self.fetch_all(sql, (group_wxid,))
     
     def get_system_events(self, event_type: str = None, limit: int = 100) -> List[Dict[str, Any]]:
         if event_type:
@@ -214,11 +226,11 @@ class SQLiteService:
     
     def get_stats(self) -> Dict[str, int]:
         contacts_count = self.fetch_one('SELECT COUNT(*) as count FROM contacts')['count']
-        chatrooms_count = self.fetch_one('SELECT COUNT(*) as count FROM chatrooms')['count']
+        groups_count = self.fetch_one('SELECT COUNT(*) as count FROM groups')['count']
         messages_count = self.fetch_one('SELECT COUNT(*) as count FROM messages')['count']
         
         return {
             'contacts_count': contacts_count,
-            'chatrooms_count': chatrooms_count,
+            'groups_count': groups_count,
             'messages_count': messages_count
         }
