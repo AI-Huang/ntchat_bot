@@ -106,10 +106,10 @@ def init_tables(cursor):
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ''')
     
-    # groups 表（groups 是保留关键字，需要用反引号）
+    # rooms 表
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS `groups` (
-            group_wxid VARCHAR(128) PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS rooms (
+            room_wxid VARCHAR(128) PRIMARY KEY,
             name VARCHAR(256),
             member_count INT DEFAULT 0,
             create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -121,7 +121,7 @@ def init_tables(cursor):
     # group_members 表
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS group_members (
-            group_wxid VARCHAR(128),
+            room_wxid VARCHAR(128),
             wxid VARCHAR(128),
             account VARCHAR(128),
             nickname VARCHAR(256),
@@ -132,7 +132,7 @@ def init_tables(cursor):
             country VARCHAR(32),
             remark VARCHAR(256),
             sex TINYINT DEFAULT 0,
-            PRIMARY KEY (group_wxid, wxid)
+            PRIMARY KEY (room_wxid, wxid)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ''')
     

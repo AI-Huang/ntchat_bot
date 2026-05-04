@@ -10,7 +10,14 @@ from .media_handler import (
     on_recv_video_msg,
     on_recv_voice_msg,
 )
-from .room_handler import on_room_add_member, on_room_del_member, on_room_member_list
+from .room_handler import (
+    on_room_add_member,
+    on_room_del_member,
+    on_room_invite_message,
+    on_room_member_join_detail,
+    on_room_member_list,
+    on_room_member_update,
+)
 from .system_handler import (
     on_recv_friend_request,
     on_recv_revoke_msg,

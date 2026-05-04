@@ -46,7 +46,7 @@ def fetch_group_members_on_login(wechat_instance, room_id: str = None):
             # 构造事件消息格式，调用处理函数
             event_message = {
                 "data": {
-                    "group_wxid": room_id,
+                    "room_wxid": room_id,
                     "member_list": members if isinstance(members, list) else members.get("member_list", []),
                     "total": member_count,
                     "extend": ""

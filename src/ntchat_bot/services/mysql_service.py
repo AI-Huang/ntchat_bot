@@ -105,10 +105,10 @@ class MySQLService(BaseDatabaseService):
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''')
             
-            # groups 表
+            # rooms 表
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS groups (
-                    group_wxid VARCHAR(128) PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS rooms (
+                    room_wxid VARCHAR(128) PRIMARY KEY,
                     name VARCHAR(256),
                     member_count INT DEFAULT 0,
                     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -120,7 +120,7 @@ class MySQLService(BaseDatabaseService):
             # group_members 表
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS group_members (
-                    group_wxid VARCHAR(128),
+                    room_wxid VARCHAR(128),
                     wxid VARCHAR(128),
                     account VARCHAR(128),
                     nickname VARCHAR(256),
@@ -131,8 +131,8 @@ class MySQLService(BaseDatabaseService):
                     country VARCHAR(32),
                     remark VARCHAR(256),
                     sex TINYINT DEFAULT 0,
-                    PRIMARY KEY (group_wxid, wxid),
-                    INDEX idx_group_wxid (group_wxid),
+                    PRIMARY KEY (room_wxid, wxid),
+                    INDEX idx_room_wxid (room_wxid),
                     INDEX idx_wxid (wxid)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''')
@@ -257,27 +257,27 @@ class MySQLService(BaseDatabaseService):
         sql = "SELECT * FROM contacts WHERE wxid = %s"
         return self.fetch_one(sql, (wxid,))
     
-    def insert_chatroom(self, group_wxid: str, name: str = None, member_count: int = 0):
+    def insert_chatroom(self, room_wxid: str, name: str = None, member_count: int = 0):
         sql = '''
-            INSERT INTO groups 
-            (group_wxid, name, member_count, update_time)
+            INSERT INTO rooms 
+            (room_wxid, name, member_count, update_time)
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE name = %s, member_count = %s, update_time = %s
         '''
         local_time = self._get_local_time()
-        self.execute(sql, (group_wxid, name, member_count, local_time, name, member_count, local_time))
+        self.execute(sql, (room_wxid, name, member_count, local_time, name, member_count, local_time))
     
-    def insert_group_member(self, group_wxid: str, wxid: str, account: str = None, nickname: str = None,
+    def insert_group_member(self, room_wxid: str, wxid: str, account: str = None, nickname: str = None,
                            display_name: str = None, avatar: str = None, city: str = None, 
                            province: str = None, country: str = None, remark: str = None, sex: int = None):
         sql = '''
             INSERT INTO group_members 
-            (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
+            (room_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE account = %s, nickname = %s, display_name = %s, 
                                    avatar = %s, city = %s, province = %s, country = %s, remark = %s, sex = %s
         '''
-        self.execute(sql, (group_wxid, wxid, account or '', nickname or '', display_name or '', 
+        self.execute(sql, (room_wxid, wxid, account or '', nickname or '', display_name or '', 
                           avatar or '', city or '', province or '', country or '', remark or '', sex or 0,
                           account or '', nickname or '', display_name or '', 
                           avatar or '', city or '', province or '', country or '', remark or '', sex or 0))
@@ -311,10 +311,10 @@ class MySQLService(BaseDatabaseService):
         sql = "SELECT * FROM contacts ORDER BY nickname"
         return self.fetch_all(sql)
     
-    def get_all_groups(self) -> List[Dict[str, Any]]:
-        sql = "SELECT * FROM groups ORDER BY name"
+    def get_all_rooms(self) -> List[Dict[str, Any]]:
+        sql = "SELECT * FROM rooms ORDER BY name"
         return self.fetch_all(sql)
     
-    def get_group_members(self, group_wxid: str) -> List[Dict[str, Any]]:
-        sql = "SELECT * FROM group_members WHERE group_wxid = %s ORDER BY nickname"
-        return self.fetch_all(sql, (group_wxid,))
+    def get_group_members(self, room_wxid: str) -> List[Dict[str, Any]]:
+        sql = "SELECT * FROM group_members WHERE room_wxid = %s ORDER BY nickname"
+        return self.fetch_all(sql, (room_wxid,))

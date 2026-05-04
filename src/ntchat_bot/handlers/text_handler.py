@@ -35,7 +35,7 @@
 {
     'data': {
         'extend': '',
-        'group_wxid': '群ID@chatroom',
+        'room_wxid': '群ID@chatroom',
         'member_list': [
             {
                 'account': '微信号',

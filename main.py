@@ -21,7 +21,10 @@ from src.ntchat_bot.handlers import (
     on_recv_voice_msg,
     on_room_add_member,
     on_room_del_member,
+    on_room_invite_message,
+    on_room_member_join_detail,
     on_room_member_list,
+    on_room_member_update,
     on_user_login,
     on_user_logout,
 )
@@ -58,6 +61,13 @@ wechat.msg_register(11029)(on_contact_info)
 
 # 注册转发消息事件
 wechat.msg_register(11061)(on_forward_message)
+
+# 注册群邀请消息事件 (type: 11058)
+wechat.msg_register(11058)(on_room_invite_message)
+# 注册群成员列表更新事件 (type: 11200)
+wechat.msg_register(11200)(on_room_member_update)
+# 注册群成员加入详情事件 (type: 11098)
+wechat.msg_register(11098)(on_room_member_join_detail)
 
 try:
     # 等待登录成功

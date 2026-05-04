@@ -46,11 +46,11 @@ class BaseDatabaseService(ABC):
         pass
     
     @abstractmethod
-    def insert_chatroom(self, group_wxid: str, name: str = None, member_count: int = 0):
+    def insert_chatroom(self, room_wxid: str, name: str = None, member_count: int = 0):
         pass
     
     @abstractmethod
-    def insert_group_member(self, group_wxid: str, wxid: str, account: str = None, nickname: str = None,
+    def insert_group_member(self, room_wxid: str, wxid: str, account: str = None, nickname: str = None,
                            display_name: str = None, avatar: str = None, city: str = None, 
                            province: str = None, country: str = None, remark: str = None, sex: int = None):
         pass
@@ -72,9 +72,9 @@ class BaseDatabaseService(ABC):
         pass
     
     @abstractmethod
-    def get_all_groups(self) -> List[Dict[str, Any]]:
+    def get_all_rooms(self) -> List[Dict[str, Any]]:
         pass
     
     @abstractmethod
-    def get_group_members(self, group_wxid: str) -> List[Dict[str, Any]]:
+    def get_group_members(self, room_wxid: str) -> List[Dict[str, Any]]:
         pass

@@ -12,11 +12,11 @@ def on_recv_friend_request(wechat_instance: ntchat.WeChat, message):
 def on_recv_revoke_msg(wechat_instance: ntchat.WeChat, message):
     data = message["data"]
     from_wxid = data["from_wxid"]
-    group_wxid = data.get("group_wxid", "")
-    is_group = group_wxid != ""
+    room_wxid = data.get("room_wxid", "")
+    is_group = room_wxid != ""
     
     if is_group:
-        room_name = wechat_instance.get_room_name(group_wxid)
+        room_name = wechat_instance.get_room_name(room_wxid)
         if not room_name:
             room_name = "未知群"
         print(f"[群撤回消息] 群: {room_name}, 撤回者: {from_wxid}")

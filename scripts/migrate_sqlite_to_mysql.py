@@ -99,10 +99,10 @@ def init_mysql_tables(mysql_conn):
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
-        # groups 表（groups 是保留关键字，需要用反引号）
+        # rooms 表
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `groups` (
-                group_wxid VARCHAR(128) PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS rooms (
+                room_wxid VARCHAR(128) PRIMARY KEY,
                 name VARCHAR(256),
                 member_count INT DEFAULT 0,
                 create_time DATETIME,
@@ -114,7 +114,7 @@ def init_mysql_tables(mysql_conn):
         # group_members 表
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS group_members (
-                group_wxid VARCHAR(128),
+                room_wxid VARCHAR(128),
                 wxid VARCHAR(128),
                 account VARCHAR(128),
                 nickname VARCHAR(256),
@@ -125,7 +125,7 @@ def init_mysql_tables(mysql_conn):
                 country VARCHAR(32),
                 remark VARCHAR(256),
                 sex TINYINT DEFAULT 0,
-                PRIMARY KEY (group_wxid, wxid)
+                PRIMARY KEY (room_wxid, wxid)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         ''')
         
@@ -222,25 +222,25 @@ def main():
     '''
     total_count += migrate_table(sqlite_conn, mysql_conn, 'contacts', contacts_columns, contacts_sql)
     
-    # 迁移 groups 表（groups 是保留关键字，需要用反引号）
-    print("\n[2/5] 迁移 groups 表")
-    groups_columns = ['group_wxid', 'name', 'member_count', 'create_time', 'update_time']
-    groups_sql = '''
-        INSERT IGNORE INTO `groups` 
-        (group_wxid, name, member_count, create_time, update_time)
+    # 迁移 rooms 表
+    print("\n[2/5] 迁移 rooms 表")
+    rooms_columns = ['room_wxid', 'name', 'member_count', 'create_time', 'update_time']
+    rooms_sql = '''
+        INSERT IGNORE INTO rooms 
+        (room_wxid, name, member_count, create_time, update_time)
         VALUES (%s, %s, %s, %s, %s)
     '''
-    total_count += migrate_table(sqlite_conn, mysql_conn, 'groups', groups_columns, groups_sql)
+    total_count += migrate_table(sqlite_conn, mysql_conn, 'rooms', rooms_columns, rooms_sql)
     
     # 迁移 group_members 表
     print("\n[3/5] 迁移 group_members 表")
     members_columns = [
-        'group_wxid', 'wxid', 'account', 'nickname', 'display_name',
+        'room_wxid', 'wxid', 'account', 'nickname', 'display_name',
         'avatar', 'city', 'province', 'country', 'remark', 'sex'
     ]
     members_sql = '''
         INSERT IGNORE INTO group_members 
-        (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
+        (room_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     '''
     total_count += migrate_table(sqlite_conn, mysql_conn, 'group_members', members_columns, members_sql)
