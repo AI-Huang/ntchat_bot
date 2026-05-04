@@ -125,7 +125,7 @@ def save_group_message(db, wechat_instance, data, room_wxid, msg_content):
                           from_wxid=data["from_wxid"],
                           to_wxid=data["to_wxid"],
                           content=msg_content,
-                          msg_type=data.get("wx_type", 0),
+                          wx_type=data.get("wx_type", 0),
                           room_wxid=room_wxid,
                           extra=json.dumps({
                               "room_name": room_name,
@@ -157,7 +157,7 @@ def save_contact_message(db, wechat_instance, data, self_wxid, msg_content):
                           from_wxid=data["from_wxid"],
                           to_wxid=data["to_wxid"],
                           content=msg_content,
-                          msg_type=data.get("wx_type", 0),
+                          wx_type=data.get("wx_type", 0),
                           extra=json.dumps(
                               {"contact_nickname": contact_nickname}))
 

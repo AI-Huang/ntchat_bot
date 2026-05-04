@@ -64,8 +64,8 @@ def log_group_members(members: Any, room_id: str) -> None:
     log_json(members, filename)
 
 
-def log_message(message: Dict[str, Any], msg_type: str = "unknown") -> None:
+def log_message(message: Dict[str, Any], wx_type: str = "unknown") -> None:
     """记录消息"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"message_{msg_type}_{timestamp}"
+    filename = f"message_{wx_type}_{timestamp}"
     log_json(message, filename)

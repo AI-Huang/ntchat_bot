@@ -1,4 +1,5 @@
 import sqlite3
+import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -7,6 +8,7 @@ from src.ntchat_bot.settings import DATABASE_PATH
 
 class SQLiteService:
     _instance = None
+    _conn = None
     
     def __new__(cls, db_path: str = None):
         if cls._instance is None:
@@ -22,24 +24,32 @@ class SQLiteService:
             db_path = str(DATABASE_PATH)
         
         self.db_path = db_path
-        self.conn = None
         self._initialized = True
         self._init_tables()
     
     def _connect(self):
-        if self.conn is None:
-            self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-            self.conn.row_factory = sqlite3.Row
+        if SQLiteService._conn is None:
+            # 启用 WAL 模式支持并发读写
+            SQLiteService._conn = sqlite3.connect(
+                self.db_path, 
+                check_same_thread=False,
+                timeout=30  # 增加超时时间
+            )
+            SQLiteService._conn.row_factory = sqlite3.Row
+            # 启用 WAL 模式
+            SQLiteService._conn.execute("PRAGMA journal_mode=WAL;")
+            SQLiteService._conn.execute("PRAGMA synchronous=NORMAL;")
+            SQLiteService._conn.execute("PRAGMA cache_size=-10000;")
     
     def _close(self):
-        if self.conn is not None:
-            self.conn.close()
-            self.conn = None
+        if SQLiteService._conn is not None:
+            SQLiteService._conn.close()
+            SQLiteService._conn = None
     
     def _init_tables(self):
         self._connect()
         try:
-            cursor = self.conn.cursor()
+            cursor = SQLiteService._conn.cursor()
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS messages (
@@ -49,8 +59,9 @@ class SQLiteService:
                     to_wxid TEXT,
                     room_wxid TEXT,
                     content TEXT,
-                    msg_type INTEGER,
+                    wx_type INTEGER,
                     is_group INTEGER DEFAULT 0,
+                    timestamp INTEGER,
                     create_time TEXT DEFAULT CURRENT_TIMESTAMP,
                     extra TEXT
                 )
@@ -59,11 +70,16 @@ class SQLiteService:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS contacts (
                     wxid TEXT PRIMARY KEY,
+                    account TEXT,
                     nickname TEXT,
                     remark TEXT,
                     avatar TEXT,
-                    create_time TEXT DEFAULT CURRENT_TIMESTAMP,
-                    update_time TEXT DEFAULT CURRENT_TIMESTAMP
+                    city TEXT,
+                    province TEXT,
+                    country TEXT,
+                    sex INTEGER,
+                    create_time TEXT,
+                    update_time TEXT
                 )
             ''')
             
@@ -103,59 +119,129 @@ class SQLiteService:
                 )
             ''')
             
-            self.conn.commit()
-        finally:
-            self._close()
+            SQLiteService._conn.commit()
+        except Exception as e:
+            print(f"初始化表失败: {e}")
+    
+    def _execute_with_retry(self, sql: str, params: tuple = (), max_retries: int = 3) -> sqlite3.Cursor:
+        """带重试机制的执行方法，处理数据库锁定问题"""
+        for retry in range(max_retries):
+            self._connect()
+            try:
+                cursor = SQLiteService._conn.cursor()
+                cursor.execute(sql, params)
+                SQLiteService._conn.commit()
+                return cursor
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e):
+                    if retry < max_retries - 1:
+                        time.sleep(0.1 * (retry + 1))
+                        continue
+                    else:
+                        raise
+                else:
+                    raise
+            except Exception:
+                raise
     
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
-        self._connect()
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(sql, params)
-            self.conn.commit()
-            return cursor
-        finally:
-            self._close()
+        return self._execute_with_retry(sql, params)
     
     def fetch_one(self, sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         self._connect()
         try:
-            cursor = self.conn.cursor()
+            cursor = SQLiteService._conn.cursor()
             cursor.execute(sql, params)
             row = cursor.fetchone()
             if row:
                 return dict(row)
             return None
-        finally:
-            self._close()
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                time.sleep(0.1)
+                return self.fetch_one(sql, params)
+            raise
     
     def fetch_all(self, sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
         self._connect()
         try:
-            cursor = self.conn.cursor()
+            cursor = SQLiteService._conn.cursor()
             cursor.execute(sql, params)
             rows = cursor.fetchall()
             return [dict(row) for row in rows]
-        finally:
-            self._close()
+        except sqlite3.OperationalError as e:
+            if "database is locked" in str(e):
+                time.sleep(0.1)
+                return self.fetch_all(sql, params)
+            raise
     
-    def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, content: str, 
-                       msg_type: int, room_wxid: str = None, extra: str = None):
+    def _get_local_time(self):
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, room_wxid: str = None, 
+                       content: str = None, wx_type: int = 0, timestamp: int = None, extra: str = None):
         sql = '''
-            INSERT OR REPLACE INTO messages 
-            (msg_id, from_wxid, to_wxid, room_wxid, content, msg_type, is_group, extra)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR IGNORE INTO messages 
+            (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, extra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         is_group = 1 if room_wxid else 0
-        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, msg_type, is_group, extra))
+        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, extra))
     
-    def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None):
-        sql = '''
-            INSERT OR REPLACE INTO contacts 
-            (wxid, nickname, remark, avatar, update_time)
-            VALUES (?, ?, ?, ?, ?)
-        '''
-        self.execute(sql, (wxid, nickname, remark, avatar, datetime.now().isoformat()))
+    def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None,
+                      account: str = None, city: str = None, province: str = None, 
+                      country: str = None, sex: int = None):
+        local_time = self._get_local_time()
+        existing = self.get_contact(wxid)
+        
+        if existing:
+            update_fields = []
+            update_values = []
+            
+            if account is not None:
+                update_fields.append("account = ?")
+                update_values.append(account)
+            if nickname is not None:
+                update_fields.append("nickname = ?")
+                update_values.append(nickname)
+            if remark is not None:
+                update_fields.append("remark = ?")
+                update_values.append(remark)
+            if avatar is not None:
+                update_fields.append("avatar = ?")
+                update_values.append(avatar)
+            if city is not None:
+                update_fields.append("city = ?")
+                update_values.append(city)
+            if province is not None:
+                update_fields.append("province = ?")
+                update_values.append(province)
+            if country is not None:
+                update_fields.append("country = ?")
+                update_values.append(country)
+            if sex is not None:
+                update_fields.append("sex = ?")
+                update_values.append(sex)
+            
+            update_fields.append("update_time = ?")
+            update_values.append(local_time)
+            update_values.append(wxid)
+            
+            if update_fields:
+                sql = f"UPDATE contacts SET {', '.join(update_fields)} WHERE wxid = ?"
+                self.execute(sql, tuple(update_values))
+        else:
+            sql = '''
+                INSERT INTO contacts 
+                (wxid, account, nickname, remark, avatar, city, province, country, sex, create_time, update_time)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            '''
+            self.execute(sql, (wxid, account or '', nickname or '', remark or '', avatar or '', 
+                              city or '', province or '', country or '', sex or 0, local_time, local_time))
+    
+    def get_contact(self, wxid: str) -> Optional[Dict[str, Any]]:
+        sql = "SELECT * FROM contacts WHERE wxid = ?"
+        return self.fetch_one(sql, (wxid,))
     
     def insert_chatroom(self, group_wxid: str, name: str = None, member_count: int = 0):
         sql = '''
@@ -163,74 +249,53 @@ class SQLiteService:
             (group_wxid, name, member_count, update_time)
             VALUES (?, ?, ?, ?)
         '''
-        self.execute(sql, (group_wxid, name, member_count, datetime.now().isoformat()))
+        local_time = self._get_local_time()
+        self.execute(sql, (group_wxid, name, member_count, local_time))
     
-    def insert_room_member(self, group_wxid: str, wxid: str, nickname: str = None, 
-                          account: str = None, display_name: str = None, 
-                          avatar: str = None, city: str = None, province: str = None, 
-                          country: str = None, remark: str = None, sex: int = None):
+    def insert_group_member(self, group_wxid: str, wxid: str, account: str = None, nickname: str = None,
+                           display_name: str = None, avatar: str = None, city: str = None, 
+                           province: str = None, country: str = None, remark: str = None, sex: int = None):
         sql = '''
             INSERT OR REPLACE INTO group_members 
             (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
-        self.execute(sql, (group_wxid, wxid, account, nickname, display_name, avatar, city, province, country, remark, sex))
-    
-    def delete_room_member(self, group_wxid: str, wxid: str):
-        sql = 'DELETE FROM group_members WHERE group_wxid = ? AND wxid = ?'
-        self.execute(sql, (group_wxid, wxid))
+        self.execute(sql, (group_wxid, wxid, account or '', nickname or '', display_name or '', 
+                          avatar or '', city or '', province or '', country or '', remark or '', sex or 0))
     
     def insert_system_event(self, event_type: str, data: str):
-        sql = 'INSERT INTO system_events (event_type, data) VALUES (?, ?)'
+        sql = '''
+            INSERT INTO system_events (event_type, data)
+            VALUES (?, ?)
+        '''
         self.execute(sql, (event_type, data))
     
-    def get_message_by_id(self, msg_id: str) -> Optional[Dict[str, Any]]:
-        sql = 'SELECT * FROM messages WHERE msg_id = ?'
-        return self.fetch_one(sql, (msg_id,))
-    
     def get_messages_by_wxid(self, wxid: str, limit: int = 100) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM messages WHERE from_wxid = ? ORDER BY create_time DESC LIMIT ?'
-        return self.fetch_all(sql, (wxid, limit))
+        sql = '''
+            SELECT * FROM messages 
+            WHERE from_wxid = ? OR to_wxid = ? 
+            ORDER BY create_time DESC 
+            LIMIT ?
+        '''
+        return self.fetch_all(sql, (wxid, wxid, limit))
     
-    def get_messages_by_room_wxid(self, room_wxid: str, limit: int = 100) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM messages WHERE room_wxid = ? ORDER BY create_time DESC LIMIT ?'
+    def get_group_messages(self, room_wxid: str, limit: int = 100) -> List[Dict[str, Any]]:
+        sql = '''
+            SELECT * FROM messages 
+            WHERE room_wxid = ? 
+            ORDER BY create_time DESC 
+            LIMIT ?
+        '''
         return self.fetch_all(sql, (room_wxid, limit))
     
-    def get_contact(self, wxid: str) -> Optional[Dict[str, Any]]:
-        sql = 'SELECT * FROM contacts WHERE wxid = ?'
-        return self.fetch_one(sql, (wxid,))
-    
     def get_all_contacts(self) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM contacts ORDER BY update_time DESC'
+        sql = "SELECT * FROM contacts ORDER BY nickname"
         return self.fetch_all(sql)
     
-    def get_chatroom(self, group_wxid: str) -> Optional[Dict[str, Any]]:
-        sql = 'SELECT * FROM groups WHERE group_wxid = ?'
-        return self.fetch_one(sql, (group_wxid,))
-    
     def get_all_groups(self) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM groups ORDER BY update_time DESC'
+        sql = "SELECT * FROM groups ORDER BY name"
         return self.fetch_all(sql)
     
     def get_group_members(self, group_wxid: str) -> List[Dict[str, Any]]:
-        sql = 'SELECT * FROM group_members WHERE group_wxid = ?'
+        sql = "SELECT * FROM group_members WHERE group_wxid = ? ORDER BY nickname"
         return self.fetch_all(sql, (group_wxid,))
-    
-    def get_system_events(self, event_type: str = None, limit: int = 100) -> List[Dict[str, Any]]:
-        if event_type:
-            sql = 'SELECT * FROM system_events WHERE event_type = ? ORDER BY create_time DESC LIMIT ?'
-            return self.fetch_all(sql, (event_type, limit))
-        else:
-            sql = 'SELECT * FROM system_events ORDER BY create_time DESC LIMIT ?'
-            return self.fetch_all(sql, (limit,))
-    
-    def get_stats(self) -> Dict[str, int]:
-        contacts_count = self.fetch_one('SELECT COUNT(*) as count FROM contacts')['count']
-        groups_count = self.fetch_one('SELECT COUNT(*) as count FROM groups')['count']
-        messages_count = self.fetch_one('SELECT COUNT(*) as count FROM messages')['count']
-        
-        return {
-            'contacts_count': contacts_count,
-            'groups_count': groups_count,
-            'messages_count': messages_count
-        }

@@ -6,6 +6,8 @@ import ntchat
 from ntchat.const import notify_type
 
 from src.ntchat_bot.handlers import (
+    on_contact_info,
+    on_forward_message,
     on_recv_card_msg,
     on_recv_emoji_msg,
     on_recv_file_msg,
@@ -49,9 +51,13 @@ wechat.msg_register(notify_type.MT_RECV_FRIEND_MSG)(on_recv_friend_request)
 wechat.msg_register(notify_type.MT_RECV_REVOKE_MSG)(on_recv_revoke_msg)
 wechat.msg_register(notify_type.MT_USER_LOGIN_MSG)(on_user_login)
 wechat.msg_register(notify_type.MT_USER_LOGOUT_MSG)(on_user_logout)
-
 # 注册群成员列表事件
 wechat.msg_register(11032)(on_room_member_list)
+# 注册联系人信息事件
+wechat.msg_register(11029)(on_contact_info)
+
+# 注册转发消息事件
+wechat.msg_register(11061)(on_forward_message)
 
 try:
     # 等待登录成功
@@ -69,6 +75,9 @@ try:
     
     while True:
         time.sleep(1)
-except KeyboardInterrupt:
+# except KeyboardInterrupt:
+#     ntchat.exit_()
+#     sys.exit()
+except Exception as e:
+    logger.error(f"发生异常: {e}")
     ntchat.exit_()
-    sys.exit()
