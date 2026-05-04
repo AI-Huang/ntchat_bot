@@ -1,6 +1,6 @@
 import os
 
-from dotenv import dotenv_values, load_dotenv
+from dotenv import dotenv_values
 
 from src.ntchat_bot import PROJECT_ROOT
 

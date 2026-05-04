@@ -60,9 +60,10 @@ def on_forward_message(wechat_instance: ntchat.WeChat, message):
             from_wxid=from_wxid,
             to_wxid=to_wxid,
             room_wxid=room_wxid,
-            content=raw_msg[:500] if raw_msg else None,  # 截取前500字符
+            content="",  # 转发消息的内容放在 raw_msg 中
             wx_type=data.get("wx_type", 49),
             timestamp=timestamp,
+            raw_msg=raw_msg,  # 保存完整的原始消息数据
             extra=json.dumps(extra_data, ensure_ascii=False)
         )
         
