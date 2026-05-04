@@ -30,3 +30,15 @@ CHATROOM_SYNC_ENABLED = config.get("CHATROOM_SYNC_ENABLED", "true").lower() == "
 DEBUG_MODE = config.get("DEBUG_MODE", "false").lower() == "true"
 
 TEST_GROUP_ID = config.get("TEST_GROUP_ID", "")
+
+# 数据库类型配置 ('sqlite' 或 'mysql')
+DATABASE_TYPE = config.get("DATABASE_TYPE", "sqlite").lower()
+
+# MySQL 配置
+MYSQL_CONFIG = {
+    'host': config.get('MYSQL_HOST', 'localhost'),
+    'port': int(config.get('MYSQL_PORT', 3306)),
+    'user': config.get('MYSQL_USER', 'root'),
+    'password': config.get('MYSQL_PASSWORD', ''),
+    'database': config.get('MYSQL_DATABASE', 'wechat')
+}

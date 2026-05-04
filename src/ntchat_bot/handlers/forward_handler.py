@@ -23,7 +23,7 @@ import json
 
 import ntchat
 
-from src.ntchat_bot.services.sqlite_service import SQLiteService
+from src.ntchat_bot.services import DatabaseServiceFactory
 
 
 def on_forward_message(wechat_instance: ntchat.WeChat, message):
@@ -50,7 +50,7 @@ def on_forward_message(wechat_instance: ntchat.WeChat, message):
             print(f"[联系人转发消息] 发送者: {from_wxid}, msgid: {msg_id}")
         
         # 保存到数据库
-        db = SQLiteService()
+        db = DatabaseServiceFactory.get_service()
         extra_data = {
             "wx_sub_type": data.get("wx_sub_type"),
             "is_pc": data.get("is_pc")

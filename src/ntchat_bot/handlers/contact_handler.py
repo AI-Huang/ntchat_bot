@@ -37,7 +37,7 @@
 
 import ntchat
 
-from src.ntchat_bot.services import SQLiteService
+from src.ntchat_bot.services import DatabaseServiceFactory
 
 
 def on_contact_info(wechat_instance: ntchat.WeChat, message):
@@ -69,7 +69,7 @@ def on_contact_info(wechat_instance: ntchat.WeChat, message):
         print(f"[联系人信息] wxid: {wxid}, 昵称: {nickname}, 备注: {remark}")
         
         # 保存到数据库
-        db = SQLiteService()
+        db = DatabaseServiceFactory.get_service()
         db.insert_contact(
             wxid=wxid,
             account=data.get("account", ""),

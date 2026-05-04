@@ -5,8 +5,10 @@ from typing import Any, Dict, List, Optional
 
 from src.ntchat_bot.settings import DATABASE_PATH
 
+from .base_service import BaseDatabaseService
 
-class SQLiteService:
+
+class SQLiteService(BaseDatabaseService):
     _instance = None
     _conn = None
     

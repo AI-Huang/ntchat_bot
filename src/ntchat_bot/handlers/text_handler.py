@@ -74,7 +74,7 @@ import json
 
 import ntchat
 
-from src.ntchat_bot.services import SQLiteService
+from src.ntchat_bot.services import DatabaseServiceFactory
 from src.ntchat_bot.settings import DEBUG_MODE
 
 
@@ -206,7 +206,7 @@ def on_recv_text_msg(wechat_instance: ntchat.WeChat, message):
         is_group = room_wxid != ""
 
         if from_wxid != self_wxid:
-            db = SQLiteService()
+            db = DatabaseServiceFactory.get_service()
 
             if is_group:
                 print(f"[群消息] 群ID: {room_wxid}, 发送者: {from_wxid}, 内容: {msg_content}")

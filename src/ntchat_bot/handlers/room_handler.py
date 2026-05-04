@@ -50,7 +50,7 @@
 
 import ntchat
 
-from src.ntchat_bot.services import SQLiteService
+from src.ntchat_bot.services import DatabaseServiceFactory
 
 
 def on_room_member_list(wechat_instance: ntchat.WeChat, message):
@@ -75,7 +75,7 @@ def on_room_member_list(wechat_instance: ntchat.WeChat, message):
         
         print(f"[群成员列表] 群ID: {group_wxid}, 成员总数: {total}")
         
-        db = SQLiteService()
+        db = DatabaseServiceFactory.get_service()
         
         room_info = wechat_instance.get_room_detail(group_wxid)
         if isinstance(room_info, dict):
