@@ -19,8 +19,9 @@ echo Set oWS = WScript.CreateObject("WScript.Shell") > %VBSCRIPT%
 echo sLinkFile = "%SHORTCUT_PATH%" >> %VBSCRIPT%
 echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %VBSCRIPT%
 echo oLink.TargetPath = "%TARGET_BAT%" >> %VBSCRIPT%
+echo oLink.Arguments = "daemon" >> %VBSCRIPT%
 echo oLink.WorkingDirectory = "%~dp0" >> %VBSCRIPT%
-echo oLink.Description = "Start ntchat_bot" >> %VBSCRIPT%
+echo oLink.Description = "Start ntchat_bot (daemon mode)" >> %VBSCRIPT%
 echo oLink.Save >> %VBSCRIPT%
 
 cscript /nologo %VBSCRIPT%

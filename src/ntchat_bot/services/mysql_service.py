@@ -2,8 +2,9 @@
 MySQL 数据库服务
 """
 
+import functools
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import mysql.connector
 from mysql.connector import Error
@@ -11,6 +12,32 @@ from mysql.connector import Error
 from src.ntchat_bot.settings import MYSQL_CONFIG
 
 from .base_service import BaseDatabaseService
+
+
+def retry_on_connection_lost(max_retries: int = 2):
+    """
+    装饰器：当检测到 MySQL 连接丢失时自动重试
+    
+    Args:
+        max_retries: 最大重试次数
+    """
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(self, *args, **kwargs):
+            retry_count = 0
+            while retry_count <= max_retries:
+                try:
+                    return func(self, *args, **kwargs)
+                except Error as e:
+                    if 'Lost connection' in str(e) and retry_count < max_retries:
+                        print(f"MySQL连接丢失，尝试重新连接 ({retry_count + 1}/{max_retries})...")
+                        self._reconnect()
+                        retry_count += 1
+                    else:
+                        raise
+            raise Exception(f"MySQL连接重试 {max_retries} 次后仍失败")
+        return wrapper
+    return decorator
 
 
 class MySQLService(BaseDatabaseService):
@@ -37,6 +64,13 @@ class MySQLService(BaseDatabaseService):
         """建立数据库连接"""
         if self._conn is None or not self._conn.is_connected():
             try:
+                # 先尝试关闭旧连接
+                if self._conn is not None:
+                    try:
+                        self._conn.close()
+                    except:
+                        pass
+                
                 self._conn = mysql.connector.connect(
                     host=self.config.get('host', 'localhost'),
                     port=self.config.get('port', 3306),
@@ -46,11 +80,17 @@ class MySQLService(BaseDatabaseService):
                     charset='utf8mb4',
                     autocommit=True,
                     pool_size=10,
-                    pool_name='wechat_pool'
+                    pool_name='wechat_pool',
+                    connection_timeout=30
                 )
             except Error as e:
                 print(f"MySQL连接失败: {e}")
                 raise
+    
+    def _reconnect(self):
+        """强制重新连接"""
+        self._conn = None
+        self._connect()
     
     def _close(self):
         """关闭数据库连接"""
@@ -154,38 +194,29 @@ class MySQLService(BaseDatabaseService):
             print(f"MySQL初始化表失败: {e}")
             raise
     
+    @retry_on_connection_lost(max_retries=2)
     def execute(self, sql: str, params: tuple = ()):
         """执行SQL语句"""
         self._connect()
-        try:
-            cursor = self._conn.cursor()
-            cursor.execute(sql, params)
-            return cursor
-        except Error as e:
-            print(f"MySQL执行失败: {e}, SQL: {sql}")
-            raise
+        cursor = self._conn.cursor()
+        cursor.execute(sql, params)
+        return cursor
     
+    @retry_on_connection_lost(max_retries=2)
     def fetch_one(self, sql: str, params: tuple = ()) -> Optional[Dict[str, Any]]:
         """查询单条记录"""
         self._connect()
-        try:
-            cursor = self._conn.cursor(dictionary=True)
-            cursor.execute(sql, params)
-            return cursor.fetchone()
-        except Error as e:
-            print(f"MySQL查询失败: {e}")
-            raise
+        cursor = self._conn.cursor(dictionary=True)
+        cursor.execute(sql, params)
+        return cursor.fetchone()
     
+    @retry_on_connection_lost(max_retries=2)
     def fetch_all(self, sql: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """查询多条记录"""
         self._connect()
-        try:
-            cursor = self._conn.cursor(dictionary=True)
-            cursor.execute(sql, params)
-            return cursor.fetchall()
-        except Error as e:
-            print(f"MySQL查询失败: {e}")
-            raise
+        cursor = self._conn.cursor(dictionary=True)
+        cursor.execute(sql, params)
+        return cursor.fetchall()
     
     def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, room_wxid: str = None, 
                        content: str = None, wx_type: int = 0, timestamp: int = None, 
