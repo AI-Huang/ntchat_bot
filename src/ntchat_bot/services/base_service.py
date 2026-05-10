@@ -12,6 +12,9 @@ class BaseDatabaseService(ABC):
     
     def _get_local_time(self):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    def _get_utc_time(self):
+        return datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
     
     @abstractmethod
     def execute(self, sql: str, params: tuple = ()):

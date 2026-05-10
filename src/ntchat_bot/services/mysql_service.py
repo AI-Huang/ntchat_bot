@@ -236,7 +236,7 @@ class MySQLService(BaseDatabaseService):
     def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None,
                       account: str = None, city: str = None, province: str = None, 
                       country: str = None, sex: int = None):
-        local_time = self._get_local_time()
+        utc_time = self._get_utc_time()
         existing = self.get_contact(wxid)
         
         if existing:
@@ -269,7 +269,7 @@ class MySQLService(BaseDatabaseService):
                 update_values.append(sex)
             
             update_fields.append("update_time = %s")
-            update_values.append(local_time)
+            update_values.append(utc_time)
             update_values.append(wxid)
             
             if update_fields:
@@ -282,7 +282,7 @@ class MySQLService(BaseDatabaseService):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             '''
             self.execute(sql, (wxid, account or '', nickname or '', remark or '', avatar or '', 
-                              city or '', province or '', country or '', sex or 0, local_time, local_time))
+                              city or '', province or '', country or '', sex or 0, utc_time, utc_time))
     
     def get_contact(self, wxid: str) -> Optional[Dict[str, Any]]:
         sql = "SELECT * FROM contacts WHERE wxid = %s"
@@ -295,8 +295,8 @@ class MySQLService(BaseDatabaseService):
             VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE name = %s, member_count = %s, update_time = %s
         '''
-        local_time = self._get_local_time()
-        self.execute(sql, (room_wxid, name, member_count, local_time, name, member_count, local_time))
+        utc_time = self._get_utc_time()
+        self.execute(sql, (room_wxid, name, member_count, utc_time, name, member_count, utc_time))
     
     def insert_group_member(self, room_wxid: str, wxid: str, account: str = None, nickname: str = None,
                            display_name: str = None, avatar: str = None, city: str = None, 
