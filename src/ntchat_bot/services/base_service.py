@@ -34,7 +34,7 @@ class BaseDatabaseService(ABC):
     
     @abstractmethod
     def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, room_wxid: str = None, 
-                       content: str = None, wx_type: int = 0, timestamp: int = None, 
+                       content: str = None, wx_type: int = 0, type: int = 0, timestamp: int = None, 
                        raw_msg: str = None, extra: str = None):
         pass
     

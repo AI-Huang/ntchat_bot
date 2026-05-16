@@ -115,6 +115,7 @@ class MySQLService(BaseDatabaseService):
                     content TEXT,
                     raw_msg TEXT,
                     wx_type INT DEFAULT 0,
+                    type INT DEFAULT 0,
                     is_group TINYINT DEFAULT 0,
                     timestamp BIGINT,
                     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -122,7 +123,8 @@ class MySQLService(BaseDatabaseService):
                     INDEX idx_from_wxid (from_wxid),
                     INDEX idx_to_wxid (to_wxid),
                     INDEX idx_room_wxid (room_wxid),
-                    INDEX idx_create_time (create_time)
+                    INDEX idx_create_time (create_time),
+                    INDEX idx_type (type)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
             ''')
             
@@ -219,7 +221,7 @@ class MySQLService(BaseDatabaseService):
         return cursor.fetchall()
     
     def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, room_wxid: str = None, 
-                       content: str = None, wx_type: int = 0, timestamp: int = None, 
+                       content: str = None, wx_type: int = 0, type: int = 0, timestamp: int = None, 
                        raw_msg: str = None, extra: str = None):
         MAX_RAW_MSG_LENGTH = 65535
         if raw_msg and len(raw_msg) > MAX_RAW_MSG_LENGTH:
@@ -227,11 +229,11 @@ class MySQLService(BaseDatabaseService):
         
         sql = '''
             INSERT IGNORE INTO messages 
-            (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, raw_msg, extra)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, type, is_group, timestamp, raw_msg, extra)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         '''
         is_group = 1 if room_wxid else 0
-        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, raw_msg, extra))
+        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, type, is_group, timestamp, raw_msg, extra))
     
     def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None,
                       account: str = None, city: str = None, province: str = None, 

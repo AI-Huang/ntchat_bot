@@ -227,6 +227,7 @@ def on_room_invite_message(wechat_instance: ntchat.WeChat, message):
             room_wxid=room_wxid,
             content=raw_msg,
             wx_type=data.get("wx_type", 10000),
+            type=message.get("type", 0),
             timestamp=data.get("timestamp"),
             extra='{"event_type": "room_invite"}'
         )

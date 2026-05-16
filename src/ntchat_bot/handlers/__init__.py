@@ -1,5 +1,5 @@
 from .contact_handler import on_contact_info
-from .forward_handler import on_forward_message
+from .forward_handler import on_forward_message, on_official_account_message
 from .media_handler import (
     on_recv_card_msg,
     on_recv_emoji_msg,

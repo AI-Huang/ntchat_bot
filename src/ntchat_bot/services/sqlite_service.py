@@ -63,6 +63,7 @@ class SQLiteService(BaseDatabaseService):
                     content TEXT,
                     raw_msg TEXT,
                     wx_type INTEGER,
+                    type INTEGER DEFAULT 0,
                     is_group INTEGER DEFAULT 0,
                     timestamp INTEGER,
                     create_time TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -182,7 +183,7 @@ class SQLiteService(BaseDatabaseService):
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
     def insert_message(self, msg_id: str, from_wxid: str, to_wxid: str, room_wxid: str = None, 
-                       content: str = None, wx_type: int = 0, timestamp: int = None, 
+                       content: str = None, wx_type: int = 0, type: int = 0, timestamp: int = None, 
                        raw_msg: str = None, extra: str = None):
         # raw_msg 最大长度限制为 64KB
         MAX_RAW_MSG_LENGTH = 65535
@@ -191,11 +192,11 @@ class SQLiteService(BaseDatabaseService):
         
         sql = '''
             INSERT OR IGNORE INTO messages 
-            (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, raw_msg, extra)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, type, is_group, timestamp, raw_msg, extra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         '''
         is_group = 1 if room_wxid else 0
-        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, is_group, timestamp, raw_msg, extra))
+        self.execute(sql, (msg_id, from_wxid, to_wxid, room_wxid, content, wx_type, type, is_group, timestamp, raw_msg, extra))
     
     def insert_contact(self, wxid: str, nickname: str = None, remark: str = None, avatar: str = None,
                       account: str = None, city: str = None, province: str = None, 

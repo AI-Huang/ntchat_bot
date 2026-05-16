@@ -8,6 +8,7 @@ from ntchat.const import notify_type
 from src.ntchat_bot.handlers import (
     on_contact_info,
     on_forward_message,
+    on_official_account_message,
     on_recv_card_msg,
     on_recv_emoji_msg,
     on_recv_file_msg,
@@ -61,6 +62,8 @@ wechat.msg_register(11029)(on_contact_info)
 
 # 注册转发消息事件
 wechat.msg_register(11061)(on_forward_message)
+# 注册公众号推送消息事件 (type: 11054)
+wechat.msg_register(11054)(on_official_account_message)
 
 # 注册群邀请消息事件 (type: 11058)
 wechat.msg_register(11058)(on_room_invite_message)
